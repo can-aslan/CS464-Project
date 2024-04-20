@@ -28,7 +28,7 @@ def predict(A2):
     arr = np.array([np.argmax([0.5, el]) for el in temp])
     return arr
         
-fh=open("dataset_link_phishing_modified.csv", 'r')
+fh=open("data.csv", 'r')
    
 data_all = []
 classes =[]
@@ -190,4 +190,3 @@ print(f"FPR={FPR:.2f}")
 print(f"FDR={FDR:.2f}")
 print(f"f1={f1:.2f}")
 print(f"f2={f2:.2f}")
-
