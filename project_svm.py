@@ -17,7 +17,7 @@ C_hyper = 50
 D_hyper=2
 Gamma= 0.015
 SAMPLE_SIZE = 11429
-fh=open("dataset_link_phishing_modified.csv", 'r')
+fh=open("data.csv", 'r')
    
 data_all = []
 classes =[]
@@ -151,31 +151,3 @@ print(f"FPR={FPR:.2f}")
 print(f"FDR={FDR:.2f}")
 print(f"f1={f1:.2f}")
 print(f"f2={f2:.2f}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
