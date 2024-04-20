@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.preprocessing import StandardScaler as SS
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
 
 def main():
     # Load the data
@@ -59,7 +59,25 @@ def main():
     plt.xlabel("Number of Neighbors: K")
     plt.ylabel("Accuracy")
     plt.grid(True)
-    plt.close()
+    plt.xscale("log")
+    plt.ylim([0, 1])
+    plt.show()
+
+    # Select the best K
+    best_k = k_values[accuracies.index(max(accuracies))]
+    print(f"Best K: {best_k} with Accuracy: {max(accuracies) * 100:.3f}%")
+    
+    # Train again with the best K
+    knn = KNN(n_neighbors=best_k)
+    knn.fit(train_x, train_y)
+    pred_y = knn.predict(test_x)
+
+    # Display the confusion matrix for the best K
+    cm = confusion_matrix(test_y, pred_y)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot(cmap=plt.cm.Blues)
+    plt.title(f"Confusion Matrix for K={best_k}")
+    plt.show()
     return
 
 main()
