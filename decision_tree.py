@@ -42,7 +42,7 @@ def plot_tree_cm(clf, feature_names, target_names, predictions):
     cm_display.plot()
     plt.show()
 
-data = pd.read_csv('dataset_link_phishing.csv', low_memory = False)
+data = pd.read_csv('data.csv', low_memory = False)
 data = pd.DataFrame(data)
 unique_value_counts = {col: data[col].nunique() for col in data.columns}
 columns_to_drop = [col for col, count in unique_value_counts.items() if count == 1]
