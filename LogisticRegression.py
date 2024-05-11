@@ -13,7 +13,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# %%
 def process_domain_with_copyright_col(x):
     if isinstance(x, str):
         x = x.lower()
