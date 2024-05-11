@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.preprocessing import StandardScaler as SS
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, auc, RocCurveDisplay, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, auc, ConfusionMatrixDisplay
 
 def main():
     # Load the data and drop the url and status columns
@@ -136,16 +136,20 @@ def main():
     test_x = scaler.transform(test_x) # Transform the test set with the new scaler fit
 
     # Train again with the best K using the combined training and validation set
-    knn = KNN(n_neighbors=best_auc_k)
-    knn.fit(combined_train_x, combined_train_y)
+    best_auc_knn = KNN(n_neighbors=best_auc_k)
+    best_auc_knn.fit(combined_train_x, combined_train_y)
 
     # Predict on the test set and display the confusion matrix
-    test_pred_y = knn.predict(test_x)
+    test_pred_y = best_auc_knn.predict(test_x)
     cm = confusion_matrix(test_y, test_pred_y)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot(cmap=plt.cm.Blues)
     plt.title(f"Confusion Matrix for K={best_auc_k} on Test Set")
     plt.show()
+
+    with open('knn.pkl', 'wb') as f:
+        pickle.dump(best_auc_knn, f)
+        
     return
 
 main()
