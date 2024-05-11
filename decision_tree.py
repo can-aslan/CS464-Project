@@ -3,9 +3,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
 from sklearn.model_selection import validation_curve, cross_val_score
 import matplotlib.pyplot as plt
+import pickle
+
 
 def cross_val_depth(clf, X_train, y_train, depths):
     train_scores, valid_scores = validation_curve(
@@ -30,6 +32,7 @@ def cross_val_depth(clf, X_train, y_train, depths):
     print("Best Depth:", best_depth)
     return best_depth
 
+
 def plot_tree_cm(clf, feature_names, target_names, predictions):
     fig = plt.figure(figsize=(15,10))
     _ = tree.plot_tree(clf, 
@@ -42,44 +45,83 @@ def plot_tree_cm(clf, feature_names, target_names, predictions):
     cm_display.plot()
     plt.show()
 
-data = pd.read_csv('data.csv', low_memory = False)
-data = pd.DataFrame(data)
-unique_value_counts = {col: data[col].nunique() for col in data.columns}
-columns_to_drop = [col for col, count in unique_value_counts.items() if count == 1]
-data.drop(columns=columns_to_drop, inplace=True)
-data = data.drop(columns=['Unnamed: 0'])
-data.drop(columns=['url'], inplace=True)
-data = pd.DataFrame(data)
-data['status'] = data['status'].map({'legitimate': 1, 'phishing': 0})
-data['domain_with_copyright'] = data['domain_with_copyright'].map({'one': 1, 'zero': 0, 'One': 1, 'Zero': 0, '1': 1, '0': 0})
+test_data = pd.read_csv('test.csv', low_memory = False)
+train_data = pd.read_csv('training.csv', low_memory = False)
+val_data = pd.read_csv('validation.csv', low_memory = False)
 
-x = data.copy()
-X = x.drop('status', axis=1)
-y = data['status']
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42, test_size=0.20,shuffle=True)
 
-depths = np.arange(1, 31, 1)  
-depths[0] = 1
+x_test = test_data.copy()
+X_test = x_test.drop('status', axis=1)
+y_test = test_data['status']
 
-clf = DecisionTreeClassifier(random_state=42)
-clf_entropy = DecisionTreeClassifier(criterion="entropy", random_state=42)
+x_train = train_data.copy()
+X_train = x_train.drop('status', axis=1)
+y_train = train_data['status']
 
-best_depth_gini = cross_val_depth(clf, X_train, y_train, depths)
-best_depth_entropy = cross_val_depth(clf_entropy, X_train, y_train, depths)
+x_val = val_data.copy()
+X_val = x_val.drop('status', axis=1)
+y_val = val_data['status']
 
-feature_names = X.columns.tolist()
+depths = np.arange(15, 25, 1)  
+
+best_depth = None
+best_accuracy = 0.0
+
+for depth in depths:
+    clf = DecisionTreeClassifier(max_depth=depth, random_state=42)
+    clf.fit(X_train, y_train)
+    y_val_pred = clf.predict(X_val)
+    accuracy = accuracy_score(y_val, y_val_pred)
+    
+    print(f"Depth: {depth}, Validation Accuracy: {accuracy}")
+    
+    if accuracy > best_accuracy:
+        best_accuracy = accuracy
+        best_depth = depth
+
+print(f"Best Depth: {best_depth}, Best Validation Accuracy: {best_accuracy}")
+best_clf_gini = DecisionTreeClassifier(max_depth=best_depth, random_state=42)
+best_clf_gini.fit(X_train, y_train)
+
+with open('decision_tree.pkl','wb') as f:
+    pickle.dump(best_clf_gini,f)
+
+test_pred_gini = best_clf_gini.predict(X_test)
+conf_matrix = confusion_matrix(y_test, test_pred_gini)
+
+accuracy = accuracy_score(y_test, test_pred_gini)
+precision = precision_score(y_test, test_pred_gini, average='macro')
+recall = recall_score(y_test, test_pred_gini, average='macro')
+f1 = f1_score(y_test, test_pred_gini, average='macro')
+
+print("Accuracy:", accuracy)
+print("Macro Precision:", precision)
+print("Macro Recall:", recall)
+print("F1 Score:", f1)
+print("Confusion Matrix:\n", conf_matrix)
+
+
 target_names = ['phishing', 'legitimate']
 
-best_clf_gini = DecisionTreeClassifier(max_depth=best_depth_gini, random_state=42)
-best_clf_gini.fit(X_train, y_train)
-test_pred_gini = best_clf_gini.predict(X_test)
-print("Accuracy with Best Depth(gini):", accuracy_score(y_test, test_pred_gini))
-plot_tree_cm(best_clf_gini,feature_names, target_names, test_pred_gini)
+cm = confusion_matrix(y_test, test_pred_gini)
+cm_display = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels = target_names)
+cm_display.plot()
+plt.show()
 
-best_clf_entropy = DecisionTreeClassifier(max_depth=best_depth_entropy, random_state=42)
-best_clf_entropy.fit(X_train, y_train)
-test_pred_entropy = best_clf_entropy.predict(X_test)
-print("Accuracy with Best Depth(entropy):", accuracy_score(y_test, test_pred_entropy))
-plot_tree_cm(best_clf_entropy,feature_names, target_names, test_pred_entropy)
+#plot_tree_cm(best_clf_gini,feature_names, target_names, test_pred_gini)
+
+fpr, tpr, thresholds = roc_curve(y_test, test_pred_gini)
+auc_score = roc_auc_score(y_test, test_pred_gini)
+
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, label=f'ROC Curve (AUC = {auc_score:.2f})')
+plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random Guessing')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend()
+plt.grid(True)
+plt.show()
+
 
 
