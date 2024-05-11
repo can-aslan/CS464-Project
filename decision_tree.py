@@ -3,9 +3,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
 from sklearn.model_selection import validation_curve, cross_val_score
 import matplotlib.pyplot as plt
+import pickle
+
 
 def cross_val_depth(clf, X_train, y_train, depths):
     train_scores, valid_scores = validation_curve(
@@ -80,6 +82,10 @@ for depth in depths:
 print(f"Best Depth: {best_depth}, Best Validation Accuracy: {best_accuracy}")
 best_clf_gini = DecisionTreeClassifier(max_depth=best_depth, random_state=42)
 best_clf_gini.fit(X_train, y_train)
+
+with open('decision_tree.pkl','wb') as f:
+    pickle.dump(best_clf_gini,f)
+
 test_pred_gini = best_clf_gini.predict(X_test)
 conf_matrix = confusion_matrix(y_test, test_pred_gini)
 
@@ -104,6 +110,18 @@ plt.show()
 
 #plot_tree_cm(best_clf_gini,feature_names, target_names, test_pred_gini)
 
+fpr, tpr, thresholds = roc_curve(y_test, test_pred_gini)
+auc_score = roc_auc_score(y_test, test_pred_gini)
+
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, label=f'ROC Curve (AUC = {auc_score:.2f})')
+plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random Guessing')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend()
+plt.grid(True)
+plt.show()
 
 
 
