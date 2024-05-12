@@ -4,41 +4,32 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, roc_curve, roc_auc_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import cross_val_score
+import joblib
+from sklearn.pipeline import Pipeline
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def process_domain_with_copyright_col(x):
-    if isinstance(x, str):
-        x = x.lower()
-        if x == "zero" or x == "0":
-            return 0
-        if x == "one" or x == "1":
-            return 1
-    else:
-        return x
-
 # %%
 # Load the data and drop the url and status columns
-df = pd.read_csv('./dataset_link_phishing.csv', low_memory=False)
+train_data = pd.read_csv('training.csv', low_memory=False)
+val_data = pd.read_csv('validation.csv', low_memory=False)
+test_data = pd.read_csv('test.csv', low_memory=False)
 
-data = df.iloc[:, 2:-1]
-y = df.iloc[:, -1]
+# Extract features and target variable from each dataset
+x_train = train_data.iloc[:, :-1]
+y_train = train_data.iloc[:, -1]
 
-# %%
-label_encoder = LabelEncoder()
-data['domain_with_copyright'] = data['domain_with_copyright'].apply(process_domain_with_copyright_col)
-print(data['domain_with_copyright'])
+x_val = val_data.iloc[:, :-1]
+y_val = val_data.iloc[:, -1]
 
-# %%
-# Splitting the dataset into training (80%), validation (10%), and test sets (10%)
-x_train, x_temp, y_train, y_temp = train_test_split(data, y, test_size=0.2, random_state=42)
-x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.5, random_state=42)
+x_test = test_data.iloc[:, :-1]
+y_test = test_data.iloc[:, -1]
 
 # %%
 # Note: without the scaler, the model could not be trained
@@ -60,6 +51,7 @@ test_predictions = pipeline.predict(x_test)
 
 test_accuracy = accuracy_score(y_test, test_predictions)
 print("Test Accuracy:", test_accuracy)
+joblib.dump(pipeline, 'logistic_regression.pkl')
 
 # %%
 conf_matrix = confusion_matrix(y_test, test_predictions)
@@ -89,17 +81,23 @@ print("Recall Score:", recall)
 print("F1 Score:", f1)
 
 # %%
-disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix)
+disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=["phishing", "legitimate"])
 disp.plot(cmap=plt.cm.Blues)
 plt.title(f"Confusion Matrix")
 plt.show()
 
 # %%
+fpr, tpr, thresholds = roc_curve(y_test, test_predictions)
+auc_score = roc_auc_score(y_test, test_predictions)
+
 plt.figure(figsize=(8, 6))
-sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Purples', cbar=False)
-plt.xlabel('Predicted Labels')
-plt.ylabel('True Labels')
-plt.title('Confusion Matrix')
+plt.plot(fpr, tpr, label=f'ROC Curve (AUC = {auc_score:.2f})')
+plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random Guessing')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend()
+plt.grid(True)
 plt.show()
 
 # %%
@@ -112,7 +110,7 @@ solver_scores = {}
 # Iterate over each solver
 for solver in solvers:
     # Create a pipeline with StandardScaler and logistic regression with the current solver
-    pipeline = make_pipeline(StandardScaler(), LogisticRegression(max_iter=10000, solver=solver))
+    pipeline = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, solver=solver))
     
     # Perform cross-validation and store the scores
     scores = cross_val_score(pipeline, x_train, y_train, cv=5)
@@ -121,3 +119,44 @@ for solver in solvers:
 # Print the cross-validation scores for each solver
 for solver, scores in solver_scores.items():
     print(f"Solver: {solver}, Mean Accuracy: {scores.mean():.4f}, Std Dev: {scores.std():.4f}")
+
+# %%
+# Define the number of iterations
+n_iterations = 2000
+
+# Define a list of solvers to compare
+solvers = ['lbfgs', 'saga', 'liblinear', 'newton-cg']
+
+# Create subplots
+fig, axes = plt.subplots(len(solvers), figsize=(10, 6), sharex=True)
+
+# Iterate over each solver
+for i, solver in enumerate(solvers):
+    # Create a pipeline with StandardScaler and logistic regression with the current solver
+    pipeline = make_pipeline(StandardScaler(), LogisticRegression(max_iter=n_iterations, solver=solver))
+    
+    # Fit the model
+    pipeline.fit(x_train, y_train)
+    
+    # Get accuracy scores at each iteration
+    accuracy_scores = np.zeros(n_iterations)
+    for j in range(n_iterations):
+        pipeline.named_steps['logisticregression'].max_iter = j + 1
+        accuracy_scores[j] = pipeline.score(x_train, y_train)
+    
+    # Plot accuracy scores
+    axes[i].plot(range(1, n_iterations + 1), accuracy_scores, label=solver)
+    axes[i].set_ylabel('Accuracy')
+    axes[i].set_title(f'Convergence of {solver}')
+    axes[i].grid(True)
+    axes[i].legend()
+
+# Set common xlabel
+axes[-1].set_xlabel('Iterations')
+
+# Adjust layout
+plt.tight_layout()
+plt.show()
+
+
+
