@@ -15,7 +15,6 @@ from sklearn import preprocessing
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, auc, precision_recall_curve, confusion_matrix
 import pandas as pd
-import pickle
 
 C_hyper = 40
 Gamma = 0.03
@@ -179,12 +178,5 @@ plt.ylabel('Precision')
 plt.title('Precision-Recall Curve - Test Set')
 plt.legend(loc="lower left")
 plt.show()
-
-# Define the filename for the pickle file
-filename = 'svm_model.pkl'
-
-# Save the trained model to the pickle file
-with open(filename, 'wb') as file:
-    pickle.dump(classifier, file)
 
 

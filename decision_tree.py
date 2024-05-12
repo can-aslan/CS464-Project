@@ -6,7 +6,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
 from sklearn.model_selection import validation_curve, cross_val_score
 import matplotlib.pyplot as plt
-import pickle
 
 
 def cross_val_depth(clf, X_train, y_train, depths):
@@ -83,8 +82,6 @@ print(f"Best Depth: {best_depth}, Best Validation Accuracy: {best_accuracy}")
 best_clf_gini = DecisionTreeClassifier(max_depth=best_depth, random_state=42)
 best_clf_gini.fit(X_train, y_train)
 
-with open('decision_tree.pkl','wb') as f:
-    pickle.dump(best_clf_gini,f)
 
 test_pred_gini = best_clf_gini.predict(X_test)
 conf_matrix = confusion_matrix(y_test, test_pred_gini)
